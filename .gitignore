@@ -1,0 +1,4 @@
+__pycache__/
+*.pyc
+video_gemini_out/
+.env
