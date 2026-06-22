@@ -1,15 +1,25 @@
 # Video Understanding Pipeline (Gemini)
 
-Extract structured understanding from coding/tutorial videos using Gemini + OCR + Whisper transcription.
+Extract structured, timestamped understanding from coding and tutorial videos using Gemini + OCR + Whisper transcription.
 
-## Features
+## Why This Pipeline
 
-- **Frame extraction** — OpenCV or ffmpeg with scene-aware or interval sampling
-- **OCR** — Tesseract on keyframes to capture on-screen text (commands, errors, paths)
-- **Transcription** — Whisper local transcription or pre-supplied transcript
-- **Coding evidence extraction** — Regex scan for commands, file paths, errors, URLs, package names
-- **Gemini analysis** — Uploads video and optional keyframes, with configurable media resolution, chunked processing for long videos, and structured JSON output
-- **Verification pass** — Optional second Gemini call to catch missed evidence
+Most approaches to video analysis fall into two camps — upload raw video and hope the model sees everything, or extract text and lose visual context. This pipeline combines both:
+
+- **Preprocessing enriches the model.** OCR captures terminal output, error messages, and code on screen. Whisper transcribes speech. Regex evidence extraction surfaces commands, paths, and errors before they reach the model. Gemini gets this context alongside the video, so it doesn't have to squint at small text or miss a spoken command.
+- **Chunk-then-merge.** Long videos are split into overlapping segments, analyzed independently, then merged — no truncation, no lost context at the end of a 30-minute coding session.
+- **Verification pass.** A second Gemini call cross-checks the analysis against the raw OCR and transcript, catching hallucinations and missed evidence.
+- **Structured output.** Optional JSON schema enforces consistent fields (timeline, commands, files, errors) for downstream tooling.
+
+## Why Gemini
+
+Other models accept video, but Gemini's native video understanding has advantages that this pipeline specifically exploits:
+
+- **File API with temporal grounding.** Upload a video once; Gemini processes it server-side and can reference any timestamp without frame-by-frame client-side sampling. The pipeline supplies `VideoMetadata` (FPS, start/end offsets) so Gemini knows exactly which time window it's analyzing.
+- **Media resolution control.** For coding videos with small terminal fonts, `--high-res` forces `MEDIA_RESOLUTION_HIGH` or `ULTRA_HIGH` — a setting most multimodal models don't expose.
+- **Schema-constrained JSON.** `response_schema` makes Gemini return perfectly valid JSON matching the pipeline's schema on the first attempt, no parsing needed.
+- **Code execution tool.** `--code-execution` lets Gemini run code inside the analysis to verify commands or reproduce errors.
+- **Chunked content.** Gemini's long context window handles the video plus uploaded keyframes plus full transcript in a single request. When combined with the chunk-then-merge strategy, there's no practical video length limit.
 
 ## Requirements
 
